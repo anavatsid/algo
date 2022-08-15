@@ -65,7 +65,7 @@ def main(args):
                 try:
                     idx = int(idx)
                     if idx in cam_idx:
-                        cap = cv2.VideoCapture(cam_idx, cv2.CAP_DSHOW)
+                        cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
                         break
                     else:
                         print("Please select available camera index...")
