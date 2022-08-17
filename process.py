@@ -36,7 +36,7 @@ class LS_Detector:
 
         cv2.rectangle(img, (x, y), (x_plus_w, y_plus_h), color, 2)
 
-        cv2.putText(img, label, (x - 10, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+        # cv2.putText(img, label, (x - 10, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
     def infer(self, image_data):
 
@@ -106,13 +106,13 @@ class LS_Detector:
                 # index = index[0]
                 x, y, w, h = boxes[index]
                 cv2.rectangle(img, (x, y), (x + w, y + h), colors[class_ids[index]], 2)
-                cv2.putText(img, self.labels[class_ids[index]], (x + 5, y + 20), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1,
-                            colors[class_ids[index]], 2)
+                # cv2.putText(img, self.labels[class_ids[index]], (x + 5, y + 20), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1,
+                #             colors[class_ids[index]], 2)
 
             x, y, w, h = boxes[right_most_id]
             cv2.rectangle(img, (x, y), (x + w, y + h), last_color, 2)
-            cv2.putText(img, final_label, (x + 5, y + 20), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1,
-                        last_color, 2)
+            # cv2.putText(img, final_label, (x + 5, y + 20), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1,
+            #             last_color, 2)
         else:
             final_label = None
         # resize_frame = cv2.resize(img, (640,640))

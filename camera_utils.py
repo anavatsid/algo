@@ -9,12 +9,12 @@ def check_camera_idx():
     for camera_idx in range(16):
         cap = cv2.VideoCapture(camera_idx, cv2.CAP_DSHOW)
         if cap.isOpened():
-            print(f'\tCamera index available: {camera_idx}')
+            print('\tCamera index available: {}'.format(camera_idx))
             all_camera_idx_available.append(camera_idx)
         cap.release()
         cv2.destroyAllWindows()
 
-    print(f"{all_camera_idx_available=}")
+    print("all_camera_idx_available = {}".format(all_camera_idx_available))
 
     return all_camera_idx_available
 

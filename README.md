@@ -1,10 +1,10 @@
 # LS Detection from Stock Graph
 
 ## Install dependencies
-```
-opencv-python
-```
-In windows, we're using 4.6.0.66 version, and 4.2.0.32 in Ubuntu.
+    opencv-python
+    python-dotenv
+    knockknock
+`python-dotenv` and `knockknock` are for **_slack-notification_**. For slack-notification, please create `.env` file.
 
 ## How to run
 Check the connection of camera.
@@ -29,8 +29,3 @@ Here, argument **_show_** is for displaying the detection result.
       -v VIDEO, --video VIDEO
                             Path for video file to be processed. (default: None)
       --show                Showing process and result frame. (default: False)
-
-
-You can check the result in this video - video_output.mp4
-
-
