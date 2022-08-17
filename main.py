@@ -12,18 +12,23 @@ log_folder = "log"
 os.makedirs(log_folder, exist_ok=True)
 
 
-def export_log(msg, log_path):
-    print(msg)
+def export_log(msg, log_path, is_notified=False):
+    now = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
+    tm_msg = '{}\t{}'.format(now, msg)
+    print(tm_msg)
+
     with open(log_path, "a") as f:
-        f.write(msg)
-        f.write("\n")
-    send_notification_api(msg)
+        f.write('{}\n'.format(tm_msg))
+        
+        if is_notified:
+            ret = send_notification_api(tm_msg)
+            f.write('{}\t{}\n'.format(now, ret))
 
 
 def ls_detect(cap, is_show, log_file):
     # print("hello world!!!!")
-    now = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
-    export_log("{}\tStarted...".format(now), log_file)
+    export_log("Started...", log_file, True)
+    
     processor = LS_Detector()
     cur_signal = None
     fps = int(cap.get(cv2.CAP_PROP_FPS))
@@ -38,7 +43,6 @@ def ls_detect(cap, is_show, log_file):
         ret, frame = cap.read()
         if frame_count % fps != 0:
             continue
-        now = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
         if ret:
             response_data = processor.infer(frame)
             if response_data["success"]:
@@ -53,14 +57,14 @@ def ls_detect(cap, is_show, log_file):
                             L_num += 1
                         else:
                             S_num += 1
-                        export_log("{}\tCurrent Status: {}\tLs = {}\tSs = {}".format(now, cur_signal, L_num, S_num), log_file)
+                        export_log("TICKER:  Current Status: {}\tLs = {}\tSs = {}".format(cur_signal, L_num, S_num), log_file, True)
                 if is_show:
                     cv2.imshow('frame', response_data["frame"])
             else:
-                export_log("{}\tFailed to Process: {}".format(now, response_data['descript']), log_file)
+                export_log("Failed to Process: {}".format(response_data['descript']), log_file)
                 break
         else:
-            export_log("{}\tDone process...".format(now), log_file)
+            export_log("Done process...", log_file, True)
             break
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -84,16 +88,17 @@ def main(args):
     log_path = os.path.join(log_folder, log_file)
 
     if not is_camera and video_file is None:
-        print("Invalid input argument...")
+        export_log("Invalid input argument...", log_file)
         return
     if is_camera:
         cam_idx = check_camera_idx()
         # cam_idx = [0]
         if cam_idx == []:
-            print("\tThere is no available camera.")
+            export_log("\tThere is no available camera.", log_file)
             return
         elif len(cam_idx) != 1:
-            print("There are several available cameras. Please select one of them.\nAvailable Camera indices: {}".format(cam_idx))
+            export_log("There are several available cameras. Please select one of them.\nAvailable Camera indices: {}".format(cam_idx),
+                       log_file)
             while True:
                 idx = input("Please select camera: ")
                 try:
@@ -102,11 +107,11 @@ def main(args):
                         cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
                         break
                     else:
-                        print("Please select available camera index...")
+                        print("Error: invalid camera index.")
                 except ValueError:
-                    print("This is not a valid number. Try again.")
+                    export_log("This is invalid data type. Input integer number.", log_file)
         else:
-            print("The used camera index is {}".format(cam_idx[0]))
+            export_log("The connected camera index is {}".format(cam_idx[0]), log_file)
             cap = cv2.VideoCapture(cam_idx[0], cv2.CAP_DSHOW)
     else:
         cap = cv2.VideoCapture(video_file)
