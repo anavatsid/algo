@@ -9,12 +9,13 @@ slack_webhook_channel = os.environ.get('SLACK_NITIFICATION_CHANNEL', '')
 
 def send_notification_api(data):
     sms_data = {'text': data}
-    r = requests.post(url=slack_webhook_url, json=sms_data)
-    if r.status_code == 200:
-        return "Slack notification successfully sent."
-    else:
-        return "Slack notification failed."
-    
+    try:
+        r = requests.post(url=slack_webhook_url, json=sms_data)
+        if r.status_code == 200:
+            return "Slack notification successfully sent."
+    except:
+        pass
+    return "Slack notification failed."
     # return r.text
     
 

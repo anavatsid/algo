@@ -1,6 +1,5 @@
 
 
-from doctest import master
 import tkinter as tk
 import tkinter.messagebox as msgbox
 from PIL import ImageGrab, ImageTk
@@ -85,13 +84,13 @@ class LabelInput():
         # e2.grid(row=1, column=1)
 
         tk.Button(self.master, 
-                text='Quit', 
+                text='Cancel', 
                 command=self.exit_diag).grid(row=3, 
                                             column=0, 
                                             sticky=tk.W, 
                                             pady=4)
         tk.Button(self.master, 
-                text='Show', command=self.show_entry_fields).grid(row=3, 
+                text='Confirm', command=self.show_entry_fields).grid(row=3, 
                                                             column=1, 
                                                             sticky=tk.W, 
                                                             pady=4)
