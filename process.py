@@ -54,6 +54,9 @@ class LS_Detector:
         else:
             res_data["descript"] = "Invalid Input type..."
             return res_data
+        
+        if img.shape[-1] == 4:
+            img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
 
         # scale = 1
         Width = img.shape[1]

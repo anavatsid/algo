@@ -29,3 +29,6 @@ Here, argument **_show_** is for displaying the detection result.
       -v VIDEO, --video VIDEO
                             Path for video file to be processed. (default: None)
       --show                Showing process and result frame. (default: False)
+
+
+https://user-images.githubusercontent.com/96384530/184595640-47954005-1199-4cfd-bf85-2fa601dcf57a.mp4

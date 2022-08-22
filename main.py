@@ -1,11 +1,14 @@
 import os
 import argparse
 from datetime import datetime
+import time
 
 import cv2
 from camera_utils import check_camera_idx
 from process import LS_Detector
 from notifier import send_notification_api
+from rect_input import GETRect
+from capture import ScreenCap
 
 
 log_folder = "log"
@@ -43,6 +46,8 @@ def ls_detect(cap, is_show, log_file):
         ret, frame = cap.read()
         if frame_count % fps != 0:
             continue
+        # cv2.imshow("init", frame)
+        # cv2.waitKey(3000)
         if ret:
             response_data = processor.infer(frame)
             if response_data["success"]:
@@ -77,7 +82,8 @@ def ls_detect(cap, is_show, log_file):
 
 
 def main(args):
-    is_camera = args.camera
+    default_types = ["capture", "camera", "video"]
+    input_type = args.input_type
     video_file = args.video
     is_show = args.show
 
@@ -87,10 +93,21 @@ def main(args):
 
     log_path = os.path.join(log_folder, log_file)
 
-    if not is_camera and video_file is None:
-        export_log("Invalid input argument...", log_file)
-        return
-    if is_camera:
+    assert input_type in default_types
+
+    if input_type == "capture":
+        print("Capture screen.. \nPlease confirm box boundries and labels")
+        rect_prossor = GETRect()
+        coordinates = rect_prossor.start()
+        if coordinates == []:
+            return
+        else:
+            cap = ScreenCap(coordinates[0]["bound"])
+
+
+    elif input_type == "video":
+        cap = cv2.VideoCapture(video_file)
+    elif input_type == "camera":
         cam_idx = check_camera_idx()
         # cam_idx = [0]
         if cam_idx == []:
@@ -113,8 +130,13 @@ def main(args):
         else:
             export_log("The connected camera index is {}".format(cam_idx[0]), log_file)
             cap = cv2.VideoCapture(cam_idx[0], cv2.CAP_DSHOW)
-    else:
-        cap = cv2.VideoCapture(video_file)
+    # if not is_camera and video_file is None:
+    #     export_log("Invalid input argument...", log_file)
+    #     return
+    # if is_camera:
+        
+    # else:
+    #     cap = cv2.VideoCapture(video_file)
 
     ls_detect(cap, is_show, log_path)
 
@@ -123,7 +145,9 @@ if __name__ == "__main__":
 
     # default="chart line light Right to Left.mov"
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-c", "--camera", action="store_true", help="camera to be processed.")
+    parser.add_argument("-i", "--input_type", help="camera to be processed.")
+    # parser.add_argument("-c", "--camera", action="store_true", help="camera to be processed.")
+
     parser.add_argument("-v", "--video", type=str, help="Path for video file to be processed.")
     parser.add_argument("--show", action="store_true", help="Showing process and result frame.")
     parser.add_argument("--log_file", type=str, help="log file path")
