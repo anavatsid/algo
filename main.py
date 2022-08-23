@@ -93,26 +93,30 @@ def main(args):
 
     if input_type == "capture":
         if ticker_config_file is not None and os.path.exists(ticker_config_file):
-            pass
+            with open(ticker_config_file, "r") as t:
+                pre_defined_tickers = [tick.strip() for tick in t.readlines() if tick.strip() != ""]
+            if len(pre_defined_tickers) == 0:
+                print("Empty config file. Please confirm that.")
+                return
+            
         else:
-            pass
+            print("No exists ticker config file. Please check that.")
+            return
 
         print("Capture screen.. \nPlease confirm box boundries and labels")
-        rect_prossor = GETRect()
+        rect_prossor = GETRect(pre_defined_tickers)
         coordinates = rect_prossor.start()
-        if coordinates == []:
+        if coordinates is None:
             return
         else:
-            cap = ScreenCap(coordinates[0]["bound"])
-            ticker_name = coordinates[0]["label"]
+            cap = ScreenCap(coordinates["bound"])
+            ticker_name = coordinates["label"]
             log_file = args.log_file
             if log_file is None:
                 log_file = ticker_name + "_" + datetime.now().strftime("%m_%d_%Y") + ".log"
 
             log_path = os.path.join(log_folder, log_file)
-
             ls_detect(cap, is_show, log_path, ticker_name)
-
 
     elif input_type == "video":
         cap = cv2.VideoCapture(video_file)

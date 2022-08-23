@@ -2,16 +2,18 @@
 
 import tkinter as tk
 import tkinter.messagebox as msgbox
+from typing import ItemsView, List
 from PIL import ImageGrab, ImageTk
 
 
 
 class GUI(tk.Tk):
-    def __init__(self):
+    def __init__(self, ticker_list):
         super().__init__()
-        self.rect_coor = []
+        self.ticker_list = ticker_list
+        self.rect_coor = None
         self.label_input_diag = None
-        self.labels_list = []
+        self.selected_label = None
         self.withdraw()
         self.attributes('-fullscreen', True)
 
@@ -43,18 +45,30 @@ class GUI(tk.Tk):
         bbox = self.canvas.bbox(self.rect)
         # GET_Rect.rect_list.append(bbox)
         print(bbox)
-        self.label_input_diag = LabelInput()
+        self.label_input_diag = LabelInput(self.ticker_list)
         self.label_input_diag.master.mainloop()
-        print("label_input_diag.label = ", self.label_input_diag.label)
         if self.label_input_diag.label is not None:
-            self.labels_list.append(self.label_input_diag.label)
-            self.rect_coor.append(bbox)
-        is_continue = msgbox.askquestion(title="Please confirm", message="Do you want to continue?")
-        print(is_continue)
-        if is_continue == msgbox.NO:
-            self.canvas.destroy()
-            self.destroy()
+            self.selected_label = self.label_input_diag.label
+            self.rect_coor = bbox
+            is_yes = msgbox.askyesnocancel(title="Please confirm", message="Are you sure about this ticker?")
+            if is_yes:
 
+                self.canvas.destroy()
+                self.destroy()
+            elif is_yes is None:
+                self.selected_label = None
+                self.rect_coor = None
+                self.canvas.destroy()
+                self.destroy()
+            else:
+                pass
+        else:
+            retry = msgbox.askretrycancel(title="Retry?", message="Do you want to Retry?")
+            if retry:
+                pass
+            else:
+                self.canvas.destroy()
+                self.destroy()
         # self.withdraw()
         # self.new_image = ImageTk.PhotoImage(ImageGrab.grab(bbox))
         # self.attributes('-fullscreen', False)
@@ -67,20 +81,29 @@ class GUI(tk.Tk):
 
 
 class LabelInput():
-    def __init__(self):
+    def __init__(self, tickernames:List):
         # super().__init__()
 
         self.master = tk.Tk()
+        self.master.title("Please select ticker name.")
         self.label = None
         tk.Label(self.master, 
-                text="First Name").grid(row=0)
+                text="Ticker Name: ").grid(row=0)
         # tk.Label(master, 
         #          text="Last Name").grid(row=1)
 
-        self.e1 = tk.Entry(self.master)
+        # items_var = tk.StringVar(items)
+        # items = ["AAPL", "MSFT", "NQ"]
+        self.variable = tk.StringVar(self.master)
+        self.variable.set(tickernames[0])
+        self.e1 = tk.OptionMenu(self.master, self.variable, *tickernames)
+        self.e1.grid(row=0, column=1)
+        # self.e1.pack()
+        # items = ["AAPL", "MSFT", "NQ"]
+        # for i, item in enumerate(items):
+        #     self.e1.insert(i, item)
         # e2 = tk.Entry(master)
 
-        self.e1.grid(row=0, column=1)
         # e2.grid(row=1, column=1)
 
         tk.Button(self.master, 
@@ -100,39 +123,36 @@ class LabelInput():
         self.master.quit()
     
     def show_entry_fields(self):
-        label_value = self.e1.get().strip()
-        print("First Name: %s" % (label_value))
+        label_value = self.variable.get().strip()
         if label_value != "":
-            print("hello")
             self.label = label_value
             self.master.destroy()
             self.master.quit()
             # return label_value
 
 class GETRect:
-    def __init__(self) -> None:
+    def __init__(self, ticker_list) -> None:
         
-        self.root = GUI()
+        self.root = GUI(ticker_list)
         self.rect_list = []
 
     def start(self):
         self.root.mainloop()
-        print("box coordinates: ", self.root.rect_coor)
-        print("labels values: ", self.root.labels_list)
-        boxes = []
-        for label, bound in zip(self.root.labels_list, self.root.rect_coor):
-            left, top, right, bottom = bound
-            width = right - left
-            height = bottom - top
-            box = {
-                "label": label,
-                "bound": [left, top, width, height]
-            }
-            boxes.append(box)
-        return boxes
-
+        if self.root.rect_coor is None or self.root.selected_label is None:
+            return None
+        # for label, bound in zip(self.root.selected_label, selected_label):
+        left, top, right, bottom = self.root.rect_coor
+        width = right - left
+        height = bottom - top
+        box = {
+            "label": self.root.selected_label,
+            "bound": [left, top, width, height]
+        }
+        # boxes.append(box)
+        return box
 
 
 if __name__ == "__main__":
-    dd= GETRect()
+    ticker_list = ["AAPL", "MSFT", "NQ"]
+    dd= GETRect(ticker_list)
     dd.start()
