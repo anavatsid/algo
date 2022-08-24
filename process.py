@@ -24,7 +24,10 @@ class LS_Detector:
     def get_output_layers(self):
         layer_names = self.net.getLayerNames()
 
-        output_layers = [layer_names[i[0] - 1] for i in self.net.getUnconnectedOutLayers()]
+        try:
+            output_layers = [layer_names[i[0] - 1] for i in self.net.getUnconnectedOutLayers()]
+        except:
+            output_layers = [layer_names[i - 1] for i in self.net.getUnconnectedOutLayers()]
 
         return output_layers
 
