@@ -63,7 +63,7 @@ def ls_detect(cap, is_show, log_file, ticker_name = None):
                         else:
                             full_signal = "SHORT"
                             S_num += 1
-                        export_log("Current Status: {}\tLs = {}\tSs = {}".format(full_signal, L_num, S_num), ticker_name, log_file, True)
+                        export_log("{}\tLs = {}\tSs = {}".format(full_signal, L_num, S_num), ticker_name, log_file, True)
                 if is_show:
                     cv2.imshow('frame', response_data["frame"])
             else:
@@ -98,24 +98,46 @@ def main(args):
             if len(pre_defined_tickers) == 0:
                 print("Empty config file. Please confirm that.")
                 return
+            print("The existing ticker names are follow:")
+            for i, tick in enumerate(pre_defined_tickers):
+                print("\t{}:\t{}".format(i, tick))
+            
+            ticker_name = None
+            while True:
+                ticker_idx = input("Please select ticker index as integer: ")
+                try:
+                    ticker_idx = int(ticker_idx)
+                    if ticker_idx in range(len(pre_defined_tickers)):
+                        ticker_name = pre_defined_tickers[ticker_idx]
+                        # print()
+                        break
+                    else:
+                        print("Error: invalid ticker index. Please select again.")
+                except ValueError:
+                    print("This is invalid index type. Input integer number.")
+            if ticker_name is None:
+                return
             
         else:
             print("No exists ticker config file. Please check that.")
             return
 
         print("Capture screen.. \nPlease confirm box boundries and labels")
-        rect_prossor = GETRect(pre_defined_tickers)
+        rect_prossor = GETRect()
         coordinates = rect_prossor.start()
         if coordinates is None:
             return
         else:
+            ticker_info = "Ticker Name: {}\tTicker Coordinates: {}".format(ticker_name, coordinates["bound"])
+            
             cap = ScreenCap(coordinates["bound"])
-            ticker_name = coordinates["label"]
+            # ticker_name = coordinates["label"]
             log_file = args.log_file
             if log_file is None:
                 log_file = ticker_name + "_" + datetime.now().strftime("%m_%d_%Y") + ".log"
 
             log_path = os.path.join(log_folder, log_file)
+            export_log(ticker_info, ticker_name, log_path)
             ls_detect(cap, is_show, log_path, ticker_name)
 
     elif input_type == "video":

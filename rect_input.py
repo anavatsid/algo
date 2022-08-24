@@ -8,12 +8,12 @@ from PIL import ImageGrab, ImageTk
 
 
 class GUI(tk.Tk):
-    def __init__(self, ticker_list):
+    def __init__(self):
         super().__init__()
-        self.ticker_list = ticker_list
+        # self.ticker_list = ticker_list
         self.rect_coor = None
         self.label_input_diag = None
-        self.selected_label = None
+        # self.selected_label = None
         self.withdraw()
         self.attributes('-fullscreen', True)
 
@@ -43,32 +43,37 @@ class GUI(tk.Tk):
 
     def on_button_release(self, event):
         bbox = self.canvas.bbox(self.rect)
-        # GET_Rect.rect_list.append(bbox)
-        print(bbox)
-        self.label_input_diag = LabelInput(self.ticker_list)
-        self.label_input_diag.master.mainloop()
-        if self.label_input_diag.label is not None:
-            self.selected_label = self.label_input_diag.label
-            self.rect_coor = bbox
-            is_yes = msgbox.askyesnocancel(title="Please confirm", message="Are you sure about this ticker?")
-            if is_yes:
+        self.rect_coor = bbox
+        self.canvas.destroy()
+        self.destroy()
 
-                self.canvas.destroy()
-                self.destroy()
-            elif is_yes is None:
-                self.selected_label = None
-                self.rect_coor = None
-                self.canvas.destroy()
-                self.destroy()
-            else:
-                pass
-        else:
-            retry = msgbox.askretrycancel(title="Retry?", message="Do you want to Retry?")
-            if retry:
-                pass
-            else:
-                self.canvas.destroy()
-                self.destroy()
+        # GET_Rect.rect_list.append(bbox)
+        # print(bbox)
+        # self.label_input_diag = LabelInput(self.ticker_list)
+        # self.label_input_diag.master.mainloop()
+        # if self.label_input_diag.label is not None:
+        #     self.selected_label = self.label_input_diag.label
+        #     self.rect_coor = bbox
+        #     is_yes = msgbox.askyesnocancel(title="Please confirm", message="Are you sure about this ticker?")
+        #     if is_yes:
+
+        #         self.canvas.destroy()
+        #         self.destroy()
+        #     elif is_yes is None:
+        #         self.selected_label = None
+        #         self.rect_coor = None
+        #         self.canvas.destroy()
+        #         self.destroy()
+        #     else:
+        #         pass
+        # else:
+        #     retry = msgbox.askretrycancel(title="Retry?", message="Do you want to Retry?")
+        #     if retry:
+        #         pass
+        #     else:
+        #         self.canvas.destroy()
+        #         self.destroy()
+
         # self.withdraw()
         # self.new_image = ImageTk.PhotoImage(ImageGrab.grab(bbox))
         # self.attributes('-fullscreen', False)
@@ -131,21 +136,21 @@ class LabelInput():
             # return label_value
 
 class GETRect:
-    def __init__(self, ticker_list) -> None:
+    def __init__(self) -> None:
         
-        self.root = GUI(ticker_list)
+        self.root = GUI()
         self.rect_list = []
 
     def start(self):
         self.root.mainloop()
-        if self.root.rect_coor is None or self.root.selected_label is None:
+        if self.root.rect_coor is None:
             return None
         # for label, bound in zip(self.root.selected_label, selected_label):
         left, top, right, bottom = self.root.rect_coor
         width = right - left
         height = bottom - top
         box = {
-            "label": self.root.selected_label,
+            # "label": self.root.selected_label,
             "bound": [left, top, width, height]
         }
         # boxes.append(box)
@@ -154,5 +159,5 @@ class GETRect:
 
 if __name__ == "__main__":
     ticker_list = ["AAPL", "MSFT", "NQ"]
-    dd= GETRect(ticker_list)
+    dd= GETRect()
     dd.start()
