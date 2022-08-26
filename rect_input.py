@@ -89,26 +89,25 @@ class mainUI(QtWidgets.QWidget):
         self.initUI()
 
     def initUI(self):
-        layout = QtWidgets.QVBoxLayout(self)
-
         self.label = MyLabel(self)
         pixmap = QScreen.grabWindow(app.primaryScreen(), app.desktop().winId())
 
         self.label.setStyleSheet("border: 0px;")
         self.label.setPixmap(pixmap)
-        layout.addWidget(self.label)
+        _width = pixmap.width()
+        _height = pixmap.height()
+        # self.label.resize(_width, _height)
+        self.label.pixmap().save("grab_01.png", "png")
 
-        self.setLayout(layout)
+        # app.desktop().setFixedSize(_width, _height)
+        # geometry = app.desktop().availableGeometry()
 
-        geometry = app.desktop().availableGeometry()
-        print((geometry.width(), geometry.height()))
-        # self.setFixedSize(geometry.width(), geometry.height())
-        self.setFixedSize(1920, 1080)
-        self.setStyleSheet("border: 0px;")
+        self.setFixedSize(_width, _height)
+        # topLeftPoint = app.desktop().availableGeometry().topLeft()
+        # self.move(topLeftPoint)
 
-        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.show()
-
 
 def rectangle_select():
     window = mainUI()
