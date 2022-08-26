@@ -7,7 +7,7 @@ import cv2
 from camera_utils import check_camera_idx
 from process import LS_Detector
 from notifier import send_notification_api
-from rect_input import GETRect
+from rect_input import rectangle_select
 from capture import ScreenCap
 
 
@@ -123,15 +123,14 @@ def main(args):
             return
 
         print("Capture screen.. \nPlease confirm box boundries and labels")
-        rect_prossor = GETRect()
-        coordinates = rect_prossor.start()
+        coordinates = rectangle_select()
+        # coordinates = rect_prossor.start()
         if coordinates is None:
             return
         else:
-            ticker_info = "Ticker Name: {}\tTicker Coordinates: {}".format(ticker_name, coordinates["bound"])
+            ticker_info = "Ticker Name: {}\tTicker Coordinates: {}".format(ticker_name, coordinates)
             
-            cap = ScreenCap(coordinates["bound"])
-            # ticker_name = coordinates["label"]
+            cap = ScreenCap(coordinates)
             log_file = args.log_file
             if log_file is None:
                 log_file = ticker_name + "_" + datetime.now().strftime("%m_%d_%Y") + ".log"
@@ -151,6 +150,8 @@ def main(args):
         ls_detect(cap, is_show, log_path)
     elif input_type == "camera":
         cam_idx = check_camera_idx()
+        # if log_file is None:
+        log_file = datetime.now().strftime("%m_%d_%Y") + ".log"
         # cam_idx = [0]
         if cam_idx == []:
             export_log("\tThere is no available camera.", log_file)
