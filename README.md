@@ -38,7 +38,7 @@ If you need to process the video file, please point the video path.
 python main.py --video "path/to/video" --show
 ```
 ### Screen Capture
-In case of screen capture, Please use the below command. The number of ticker in config file and the number of user-selected rectangles should be same. Otherwise, error message will be displayed.
+In case of screen capture, Please use the below command. If so, the available ticker names will be displayed from config file. From there, select one of them and select the specific area on screeen.
 ```commandline
 python main.py -i capture -c ticker.config
 ```
