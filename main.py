@@ -9,10 +9,19 @@ from process import LS_Detector
 from notifier import send_notification_api
 from rect_input import rectangle_select
 from capture import ScreenCap
-
+from trade import process_trade
 
 log_folder = "log"
 os.makedirs(log_folder, exist_ok=True)
+
+trade_config_dir = "order_utils/cfg"
+
+
+def get_config_file_list():
+
+    files = [file for file in os.listdir(trade_config_dir) if file.endswith(".cfg")]
+    print(files)
+    return files
 
 
 def export_log(msg, ticker_name, log_path, is_notified=False):
@@ -28,7 +37,7 @@ def export_log(msg, ticker_name, log_path, is_notified=False):
             f.write('{}\t{}\t{}\n'.format(ticker_name, now, ret))
 
 
-def ls_detect(cap, is_show, log_file, ticker_name = None):
+def ls_detect(cap, is_show, log_file, ticker_name=None, is_trade=False, trade_config_path=None):
     # print("hello world!!!!")
     if ticker_name is None:
         ticker_name = "Test_Ticker"
@@ -60,10 +69,21 @@ def ls_detect(cap, is_show, log_file, ticker_name = None):
                         if cur_signal == "L":
                             full_signal = "LONG"
                             L_num += 1
+                            action = "BUY"
                         else:
                             full_signal = "SHORT"
                             S_num += 1
+                            action = "SELL"
                         export_log("{}\tLs = {}\tSs = {}".format(full_signal, L_num, S_num), ticker_name, log_file, True)
+                        if is_trade:
+                            args_order = {
+                                "contract": {},
+                                "order": {
+                                    "action": action
+                                }
+                            }
+                            print(f"{trade_config_path=}")
+                            process_trade(args_order, cfg_file=trade_config_path)
                 if is_show:
                     cv2.imshow('frame', response_data["frame"])
             else:
@@ -86,58 +106,58 @@ def main(args):
     default_types = ["capture", "camera", "video"]
     input_type = args.input_type
     video_file = args.video
-    ticker_config_file = args.config
+    # ticker_config_file = args.config
     is_show = args.show
+    is_trade = args.trade
 
     assert input_type in default_types
 
     if input_type == "capture":
-        if ticker_config_file is not None and os.path.exists(ticker_config_file):
-            with open(ticker_config_file, "r") as t:
-                pre_defined_tickers = [tick.strip() for tick in t.readlines() if tick.strip() != ""]
-            if len(pre_defined_tickers) == 0:
-                print("Empty config file. Please confirm that.")
-                return
+        pre_defined_cfg_files = get_config_file_list()
+        if pre_defined_cfg_files is not None and pre_defined_cfg_files != []:
+            # with open(ticker_config_file, "r") as t:
+            #     pre_defined_tickers = [tick.strip() for tick in t.readlines() if tick.strip() != ""]
+            # if len(pre_defined_tickers) == 0:
+            #     print("Empty config file. Please confirm that.")
+            #     return
             print("The existing ticker names are follow:")
-            for i, tick in enumerate(pre_defined_tickers):
+            for i, tick in enumerate(pre_defined_cfg_files):
                 print("\t{}:\t{}".format(i, tick))
             
-            ticker_name = None
             while True:
                 ticker_idx = input("Please select ticker index as integer: ")
                 try:
                     ticker_idx = int(ticker_idx)
-                    if ticker_idx in range(len(pre_defined_tickers)):
-                        ticker_name = pre_defined_tickers[ticker_idx]
+                    if ticker_idx in range(len(pre_defined_cfg_files)):
+                        ticker_config_file = pre_defined_cfg_files[ticker_idx]
                         # print()
                         break
                     else:
                         print("Error: invalid ticker index. Please select again.")
                 except ValueError:
                     print("This is invalid index type. Input integer number.")
-            if ticker_name is None:
+            if ticker_config_file is None:
                 return
             
         else:
-            print("No exists ticker config file. Please check that.")
+            print("No exists config files. Please check that.")
             return
 
         print("Capture screen.. \nPlease confirm box boundries and labels")
         coordinates = rectangle_select()
-        # coordinates = rect_prossor.start()
         if coordinates is None:
             return
         else:
+            ticker_name = ticker_config_file.split(".")[0]
             ticker_info = "Ticker Name: {}\tTicker Coordinates: {}".format(ticker_name, coordinates)
             
             cap = ScreenCap(coordinates)
-            log_file = args.log_file
-            if log_file is None:
-                log_file = ticker_name + "_" + datetime.now().strftime("%m_%d_%Y") + ".log"
+            log_file = ticker_name + "_" + datetime.now().strftime("%m_%d_%Y") + ".log"
 
             log_path = os.path.join(log_folder, log_file)
             export_log(ticker_info, ticker_name, log_path)
-            ls_detect(cap, is_show, log_path, ticker_name)
+            trade_config_path = os.path.join(trade_config_dir, ticker_config_file)
+            ls_detect(cap, is_show, log_path, ticker_name, is_trade, trade_config_path)
 
     elif input_type == "video":
         cap = cv2.VideoCapture(video_file)
@@ -190,10 +210,10 @@ if __name__ == "__main__":
     # default="chart line light Right to Left.mov"
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-i", "--input_type", default="capture", help="input type to be processed.")
-    parser.add_argument("-c", "--config", default="ticker.config", help="config file path of ticker")
+    # parser.add_argument("-c", "--config", default="ticker.config", help="config file path of ticker")
 
     parser.add_argument("-v", "--video", type=str, help="Path for video file to be processed when input type is video.")
     parser.add_argument("--show", action="store_true", help="Showing process and result frame.")
-    parser.add_argument("--log_file", type=str, help="log file path")
+    parser.add_argument("--trade", action="store_true", help="process to trade")
     args = parser.parse_args()
     main(args)

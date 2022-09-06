@@ -16,8 +16,7 @@ class MyLabel(QtWidgets.QLabel):
         self.setFocusPolicy(Qt.TabFocus)
 
     def keyPressEvent(self, qKeyEvent):
-        print(qKeyEvent.key())
-        if qKeyEvent.key() == QtCore.Qt.Key_Return: 
+        if qKeyEvent.key() == QtCore.Qt.Key_Return:
             print('Enter pressed')
         else:
             super().keyPressEvent(qKeyEvent)
@@ -77,7 +76,7 @@ class MyLabel(QtWidgets.QLabel):
                 self.upper_left = QtCore.QPoint(event.pos())
             # update geometry
             self.selection.setGeometry(QtCore.QRect(self.upper_left, self.lower_right).normalized())
-            print(QtCore.QRect(self.upper_left, self.lower_right))
+            # print(QtCore.QRect(self.upper_left, self.lower_right))
             # self.closeEvent(QCloseEvent())
             self.parent().close()
 
@@ -94,17 +93,15 @@ class mainUI(QtWidgets.QWidget):
 
         self.label.setStyleSheet("border: 0px;")
         self.label.setPixmap(pixmap)
-        _width = pixmap.width()
-        _height = pixmap.height()
-        # self.label.resize(_width, _height)
+        self.label.resize(pixmap.width(), pixmap.height())
         self.label.pixmap().save("grab_01.png", "png")
 
-        # app.desktop().setFixedSize(_width, _height)
-        # geometry = app.desktop().availableGeometry()
+        geometry = app.desktop().availableGeometry()
 
-        self.setFixedSize(_width, _height)
-        # topLeftPoint = app.desktop().availableGeometry().topLeft()
-        # self.move(topLeftPoint)
+        self.setFixedSize(pixmap.width(), pixmap.height())
+        topLeftPoint = app.desktop().availableGeometry().topLeft()
+        self.move(topLeftPoint)
+        # print(self.size())
 
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.show()
@@ -121,7 +118,7 @@ def rectangle_select():
     width = abs(x1 - x2)
     top = min(y1, y2)
     height = abs(y1 - y2)
-    print([left, top, width, height])
+    # print([left, top, width, height])
     return [left, top, width, height]
 
 
