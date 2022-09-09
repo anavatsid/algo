@@ -1,20 +1,35 @@
 import os
 import argparse
 from datetime import datetime
-import time
 
 import cv2
 from camera_utils import check_camera_idx
 from process import LS_Detector
-from notifier import send_notification_api
 from rect_input import rectangle_select
 from capture import ScreenCap
 from trade import process_trade
+from log_utils import export_log
+import configparser
 
 log_folder = "log"
 os.makedirs(log_folder, exist_ok=True)
 
 trade_config_dir = "order_utils/cfg"
+os.makedirs(trade_config_dir, exist_ok=True)
+global_trade_file = "order_utils/TRADE_FLAG.cfg"
+
+
+def get_global_flag():
+    if os.path.exists(global_trade_file):
+        try:
+            config = configparser.ConfigParser()
+            config.read([global_trade_file])
+            return config.getboolean("global", "global")
+        except:
+            return False
+    else:
+        print("Global Trade File not exists.")
+        return False
 
 
 def get_config_file_list():
@@ -24,24 +39,11 @@ def get_config_file_list():
     return files
 
 
-def export_log(msg, ticker_name, log_path, is_notified=False):
-    now = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
-    tm_msg = '{}\t{}\t{}'.format(ticker_name, now, msg)
-    print(tm_msg)
-
-    with open(log_path, "a") as f:
-        f.write('{}\n'.format(tm_msg))
-        
-        if is_notified:
-            ret = send_notification_api(tm_msg)
-            f.write('{}\t{}\t{}\n'.format(ticker_name, now, ret))
-
-
 def ls_detect(cap, is_show, log_file, ticker_name=None, is_trade=False, trade_config_path=None):
     # print("hello world!!!!")
     if ticker_name is None:
         ticker_name = "Test_Ticker"
-    export_log("Started...", ticker_name, log_file, True)
+    export_log("{}\tStarted...".format(ticker_name), log_file, is_notified=True)
     
     processor = LS_Detector()
     cur_signal = None
@@ -74,23 +76,42 @@ def ls_detect(cap, is_show, log_file, ticker_name=None, is_trade=False, trade_co
                             full_signal = "SHORT"
                             S_num += 1
                             action = "SELL"
-                        export_log("{}\tLs = {}\tSs = {}".format(full_signal, L_num, S_num), ticker_name, log_file, True)
+                        msg = "{}\t{}".format(full_signal, L_num + S_num)
+                        now = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
+                        tm_msg = '{}\t{}\t{}'.format(ticker_name, now, msg)
+                        export_log(tm_msg, log_file, is_notified=True)
                         if is_trade:
-                            args_order = {
-                                "contract": {},
-                                "order": {
-                                    "action": action
+                            if get_global_flag():
+                                args_order = {
+                                    "contract": {},
+                                    "order": {
+                                        "signal": cur_signal,
+                                        "action": action
+                                    }
                                 }
-                            }
-                            print(f"{trade_config_path=}")
-                            process_trade(args_order, cfg_file=trade_config_path)
+                                # print(f"{trade_config_path=}")
+                                result_order = process_trade(args_order, cfg_file=trade_config_path)
+                                # now = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
+                                # tm_msg = '{}\t{}\t{}'.format(ticker_name, now, result_order["description"])
+                                tm_msg = result_order["description"]
+                                slack_msg = result_order["slack_msg"]
+                                export_log(tm_msg, log_file, slack_msg, True)
+                            else:
+                                print("\tGlobal Trade Disabled...")
+
                 if is_show:
                     cv2.imshow('frame', response_data["frame"])
             else:
-                export_log("Failed to Process: {}".format(response_data['descript']), ticker_name, log_file, True)
+                msg = "Failed to Process: {}".format(response_data['descript'])
+                now = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
+                tm_msg = '{}\t{}\t{}'.format(ticker_name, now, msg)
+                export_log(tm_msg, log_file, is_notified=True)
                 break
         else:
-            export_log("Done process...", ticker_name, log_file, True)
+            msg = "Done process..."
+            now = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
+            tm_msg = '{}\t{}\t{}'.format(ticker_name, now, msg)
+            export_log(tm_msg, log_file, is_notified=True)
             break
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -143,7 +164,7 @@ def main(args):
             print("No exists config files. Please check that.")
             return
 
-        print("Capture screen.. \nPlease confirm box boundries and labels")
+        print("Capture screen.. \nPlease confirm box boundaries and labels")
         coordinates = rectangle_select()
         if coordinates is None:
             return
@@ -155,7 +176,7 @@ def main(args):
             log_file = ticker_name + "_" + datetime.now().strftime("%m_%d_%Y") + ".log"
 
             log_path = os.path.join(log_folder, log_file)
-            export_log(ticker_info, ticker_name, log_path)
+            export_log(ticker_info, log_path)
             trade_config_path = os.path.join(trade_config_dir, ticker_config_file)
             ls_detect(cap, is_show, log_path, ticker_name, is_trade, trade_config_path)
 
@@ -203,8 +224,6 @@ def main(args):
         ls_detect(cap, is_show, log_path)
 
     
-
-
 if __name__ == "__main__":
 
     # default="chart line light Right to Left.mov"
