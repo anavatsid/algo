@@ -4,4 +4,3 @@ requests
 mss
 pillow
 pyqt5
-ibapi
