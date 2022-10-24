@@ -2,71 +2,130 @@ import os
 import argparse
 from datetime import datetime
 import time
-from urllib import request
 
 import cv2
+from order_utils.create_order import get_cfg
 from process import LS_Detector
 from rect_input import rectangle_select
 from capture import ScreenCap
-# from trade import process_trade
-# from log_utils import export_log
-# import configparser
-# import json
-import requests
+from trade import process_trade
+from log_utils import export_log
+import threading
+import configparser
+
+
+log_folder = "log"
+os.makedirs(log_folder, exist_ok=True)
+# from main import *
+trade_config_dir = "order_utils/cfg"
+os.makedirs(trade_config_dir, exist_ok=True)
+global_trade_file = "order_utils/TRADE_FLAG.cfg"
 
 
 def get_config_file_list():
-    data = {
-        "command": "TICKERS",
-        "data": None
-    }
-    tick_list = []
-    try:
-        rep_data = requests.get("http://127.0.0.1:8088/config", json=data)
-        print(rep_data)
-        if rep_data.status_code == 200:
-            json_data = rep_data.json()
-            if json_data["status"] == "success":
-                tick_list = json_data["message"][0]
-            else:
-                print("Failed to get config file list...\nTry again.")
-        else:
-            print(request.text)
-        return tick_list
-    except ConnectionRefusedError as err:
-        print("Failed to access: {}".format(repr(err)))
-        return []
+
+    files = [file for file in os.listdir(trade_config_dir) if file.endswith(".cfg")]
+    print(files)
+    return files
 
 
-def send_log(msg, trade_config_path, is_notified=False):
-    print(msg)
-    try:
-        log_data = {
-            "message": msg,
-            "is_notified": is_notified,
-            "config_file": trade_config_path
-        }
-        data = {
-            "command": "EXPORT_LOG",
-            "message": log_data
-        }
-        result = requests.post("http://127.0.0.1:8088/auto_order", json=data)
-        print(result.json()["message"][0])
-    except:
-        print("Failed to export log.")
+def get_global_flag():
+    if os.path.exists(global_trade_file):
+        try:
+            config = configparser.ConfigParser()
+            config.read([global_trade_file])
+            return config.getboolean("global", "global")
+        except:
+            return False
+    else:
+        print("Global Trade File not exists.")
+        return False
+
+
+def order_parser(data):
+    cfg_file = os.path.join(trade_config_dir, data["ticker"])
+    signal = data["signal"]
+    if not os.path.exists(cfg_file):
+        res_data = ["Config File not Exists."]
+        print(res_data[0])
+    else:
+        original_config_dict = {}
+        try:
+            original_config_dict = get_cfg(cfg_file)
+        except:
+            res_data = ["Invalid Config File."]
+            print(res_data[0])
+
+        print("original_config_dict=", original_config_dict)
+
+        if original_config_dict != {}:
+            try:
+                if signal == "L":
+                    action = "BUY"
+                else:
+                    action = "SELL"
+                cfg_dict = {
+                    "contract": {},
+                    "order": {
+                        "action": action,                                
+                    }
+                }
+                ticker_name = original_config_dict["contract"]["symbol"]
+                log_file = ticker_name + "_" + datetime.now().strftime("%m_%d_%Y") + ".log"
+                log_path = os.path.join(log_folder, log_file)
+                
+                if get_global_flag():
+                    response_data = process_trade(cfg_dict, cfg_file, is_auto=True)
+                    print("response_data[success]: ", response_data["success"])
+                    if response_data["success"]:
+                        tm_msg = response_data["description"]
+                        slack_msg = response_data["slack_msg"]
+                        export_log(tm_msg, log_path, slack_msg, True)
+                        # self.response_data["status"] = "success"
+                        cur_pos = response_data["current_pos"]
+                        # res_data = ["{} Order Placed Successfully.".format(command), cur_pos]
+                        res_data = [tm_msg]
+                    else:
+                        tm_msg = response_data["description"]
+                        export_log(tm_msg, log_path)
+                        # res_data = ["{} Order: {}".format(command, tm_msg.split("\t")[-1])]
+                        res_data = [tm_msg]
+                else:
+                    print("The Current Auto Trade Status is Disabled.")
+
+            except Exception as err:
+                res_data = ["Failed to place order: {}".format(repr(err))]
+    # print(res_data[0])
+
+
+class OrderUtils():
+    def __init__(self) -> None:
+        self.order_buffer = []
+        self.trader_thread = None
+        self.is_start = False
     
-def send_order(order_data: dict):
+    def run_loop(self):
+        self.is_start =True
+        self.trader_thread = threading.Thread(target=self.read_order_request, args=(1,))
+        self.trader_thread.setDaemon(True)
+        if self.is_start:
+            self.trader_thread.start()
 
-    try:
-        data = {
-            "command": "PLACE_ORDER",
-            "message": order_data
-        }
-        result =  requests.post("http://127.0.0.1:8088/auto_order", json=data)
-        return result.json()["message"][0]
+    def read_order_request(self, id):
+        while self.is_start:
+            if len(self.order_buffer) != 0:
+                # try:
+                order_dict = self.order_buffer[0]
+                order_parser(order_dict)
+                del self.order_buffer[0]
+                # except:
+                #     time.sleep(1)
+            else:
+                time.sleep(1)
 
-    except:
-        return "Failed to send order request."
+    def stop(self):
+        self.is_start = False
+        self.trader_thread.join()
 
 
 def ls_detect(cap, trade_config_path, is_show, is_trade=False):
@@ -75,9 +134,10 @@ def ls_detect(cap, trade_config_path, is_show, is_trade=False):
     now = datetime.now().strftime("%m-%d-%Y %H:%M:%S.%f")[:-3]
     msg = "{}\t{}\tScreen Capture Started...".format(now, trade_config_path)
 
-    send_log(msg, trade_config_path, is_notified=True)
+    export_log(msg, trade_config_path, is_notified=True)
     
-    processor = LS_Detector()
+    ls_processor = LS_Detector()
+
     cur_signal = None
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     if fps == 0:
@@ -86,13 +146,17 @@ def ls_detect(cap, trade_config_path, is_show, is_trade=False):
     L_num = 0
     S_num = 0
     frame_count = 0
+
+    order_processor = OrderUtils()
+    order_processor.run_loop()
     while cap.isOpened():
+        
         frame_count += 1
         ret, frame = cap.read()
         if frame_count % fps != 0:
             continue
         if ret:
-            response_data = processor.infer(frame)
+            response_data = ls_processor.infer(frame)
             if response_data["success"]:
                 if cur_signal != response_data["signal"]:
 
@@ -109,31 +173,13 @@ def ls_detect(cap, trade_config_path, is_show, is_trade=False):
                         msg = "{}\t{}".format(full_signal, L_num + S_num)
                         now = datetime.now().strftime("%m-%d-%Y %H:%M:%S.%f")[:-3]
                         tm_msg = '{}\t{}\t{}'.format(trade_config_path, now, msg)
-                        send_log(tm_msg, trade_config_path, is_notified=True)
+                        export_log(tm_msg, trade_config_path, is_notified=True)
                         if is_trade:
                             order_data = {
                                 "signal": cur_signal,
                                 "ticker": trade_config_path
                             }
-                            order_result = send_order(order_data)
-                            print("Order Result:\n{}".format(order_result))
-                            # if get_global_flag():
-                            #     args_order = {
-                            #         "contract": {},
-                            #         "order": {
-                            #             "signal": cur_signal,
-                            #             "action": action
-                            #         }
-                            #     }
-                            #     # print(f"{trade_config_path=}")
-                            #     result_order = process_trade(args_order, cfg_file=trade_config_path)
-                            #     # now = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
-                            #     # tm_msg = '{}\t{}\t{}'.format(ticker_name, now, result_order["description"])
-                            #     tm_msg = result_order["description"]
-                            #     slack_msg = result_order["slack_msg"]
-                            #     export_log(tm_msg, log_file, slack_msg, True)
-                            # else:
-                            #     print("\tGlobal Trade Disabled...")
+                            order_processor.order_buffer.append(order_data)
 
                 if is_show:
                     cv2.imshow('frame', response_data["frame"])
@@ -141,14 +187,14 @@ def ls_detect(cap, trade_config_path, is_show, is_trade=False):
                 msg = "Failed to Process: {}".format(response_data['descript'])
                 now = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
                 tm_msg = '{}\t{}\t{}'.format(trade_config_path, now, msg)
-                send_log(tm_msg, trade_config_path, is_notified=True)
+                export_log(tm_msg, trade_config_path, is_notified=True)
 
                 break
         else:
             msg = "Done process..."
             now = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
             tm_msg = '{}\t{}\t{}'.format(trade_config_path, now, msg)
-            send_log(tm_msg, trade_config_path, is_notified=True)
+            export_log(tm_msg, trade_config_path, is_notified=True)
             break
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -156,6 +202,7 @@ def ls_detect(cap, trade_config_path, is_show, is_trade=False):
 
     # After the loop release the cap object
     cap.release()
+    order_processor.stop()
     # Destroy all the windows
     cv2.destroyAllWindows()
 
@@ -218,17 +265,13 @@ def main(args):
             # trade_config_path = os.path.join(trade_config_dir, ticker_config_file)
             ls_detect(cap, ticker_config_file, is_show, is_trade)
 
-    
+
 if __name__ == "__main__":
 
     default="chart line light Right to Left.mov"
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-i", "--input_type", default="capture", help="input type to be processed.")
-    # parser.add_argument("-c", "--config", default="ticker.config", help="config file path of ticker")
-
-    # parser.add_argument("-v", "--video", type=str, help="Path for video file to be processed when input type is video.")
     parser.add_argument("--show", action="store_true", help="Showing process and result frame.")
     parser.add_argument("--trade", action="store_true", help="Decide if auto trade is enable or not.")
     args = parser.parse_args()
     main(args)
-    # get_work_path()    
